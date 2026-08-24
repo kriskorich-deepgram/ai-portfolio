@@ -136,44 +136,8 @@ export default function PartnerEnablement() {
         : [...prev.techStack, item],
     }));
 
-  // --- TEMP DEBUG: minimal API call to isolate the issue (remove before committing) ---
-  async function generateKit() {
-    try {
-      console.log('Starting API call...');
-      console.log('Making API call...');
-      const response = await fetch('/api/anthropic', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
-          messages: [
-            {
-              role: 'user',
-              content:
-                'Return this exact JSON: {"test": "hello", "status": "working"}',
-            },
-          ],
-        }),
-      });
-      console.log('API call complete, status:', response.status);
-      const data = await response.json();
-      console.log('Data received:', JSON.stringify(data).substring(0, 300));
-      const text = data.content?.[0]?.text;
-      console.log('Text:', text);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  }
-  // ------------------------------------------------------------------------------------
-
   async function handleGenerate(e) {
-    console.log('Generate button clicked');
     e?.preventDefault();
-    // TEMP DEBUG: run the minimal call instead of the real generation logic
-    generateKit();
-    return;
-    // eslint-disable-next-line no-unreachable
     if (!canGenerate) return;
     setError(null);
     setPhase('generating');
@@ -203,13 +167,6 @@ export default function PartnerEnablement() {
         );
       }
       const data = await res.json();
-
-      // --- TEMP DEBUG LOGGING (remove before committing) ---
-      console.log('Full API response:', JSON.stringify(data));
-      console.log('Content blocks:', JSON.stringify(data.content));
-      console.log('Raw text:', data.content?.[0]?.text?.substring(0, 500));
-      // ------------------------------------------------------
-
       const text = data?.content?.[0]?.text || '';
       const parsed = extractJson(text);
       if (!parsed || !parsed.welcomeMessage) {
