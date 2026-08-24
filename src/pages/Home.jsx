@@ -3,6 +3,11 @@ import ToolCard from '../components/ToolCard.jsx';
 import { tools } from '../data/tools.js';
 
 export default function Home() {
+  const featuredTools = [...tools].sort(
+    (a, b) =>
+      Number(b.badge === 'FEATURED') - Number(a.badge === 'FEATURED'),
+  );
+
   return (
     <div>
       <section className="relative overflow-hidden">
@@ -65,7 +70,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2">
-          {tools.map((tool) => (
+          {featuredTools.map((tool) => (
             <ToolCard key={tool.slug} tool={tool} />
           ))}
         </div>

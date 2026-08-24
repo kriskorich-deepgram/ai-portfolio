@@ -26,6 +26,7 @@ export default {
           blue: '#5b8cff',
           violet: '#9b6cff',
           indigo: '#6d7bff',
+          green: '#3ddc97',
         },
       },
       backgroundImage: {

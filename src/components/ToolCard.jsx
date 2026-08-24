@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 
 export default function ToolCard({ tool }) {
-  const isInternal = tool.href.startsWith('/');
   const isDisabled = tool.href === '#';
+  const isInternal = !tool.external && tool.href.startsWith('/');
+  const isFeatured = tool.badge === 'FEATURED';
 
   const inner = (
     <>
@@ -16,7 +17,10 @@ export default function ToolCard({ tool }) {
           <h3 className="text-lg font-semibold tracking-tight text-white">
             {tool.name}
           </h3>
-          <StatusPill status={tool.status} />
+          <div className="flex shrink-0 items-center gap-2">
+            {isFeatured && <FeaturedBadge />}
+            <StatusPill status={tool.status} />
+          </div>
         </div>
 
         <p className="text-sm leading-relaxed text-slate-300">{tool.tagline}</p>
@@ -65,6 +69,14 @@ export default function ToolCard({ tool }) {
     >
       {inner}
     </a>
+  );
+}
+
+function FeaturedBadge() {
+  return (
+    <span className="rounded-full border border-accent-green/30 bg-accent-green/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-green">
+      Featured
+    </span>
   );
 }
 

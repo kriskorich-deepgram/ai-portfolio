@@ -1,5 +1,19 @@
 export const tools = [
   {
+    slug: 'accountos',
+    name: 'AccountOS',
+    category: 'professional',
+    tagline: 'AI-powered strategic account intelligence platform.',
+    description:
+      'AI-powered strategic account intelligence platform. Manage, grow, and strategically develop enterprise accounts with an AI copilot.',
+    tags: ['Enterprise', 'Account Strategy', 'AI Copilot'],
+    accent: 'from-accent-blue/40 to-accent-green/20',
+    href: 'https://accountos.kriskorich.com',
+    external: true,
+    badge: 'FEATURED',
+    status: 'Live',
+  },
+  {
     slug: 'proposal-generator',
     name: 'Proposal Generator',
     category: 'professional',
