@@ -40,76 +40,58 @@ const REGIONS = [
   'Global',
 ];
 
-const SYSTEM_PROMPT = `You are a senior partnerships enablement manager at Deepgram, a voice AI company. Generate a comprehensive partner enablement kit for a new partner. Return ONLY valid JSON, no markdown.
+const SYSTEM_PROMPT = `You are a senior partnerships enablement manager at Deepgram, a voice AI company. Generate a partner enablement kit. Return ONLY valid JSON with NO markdown formatting. Start with { and end with }.
 
-Deepgram's products:
-- STT: Nova-3 (mono/multi/batch) and Flux (English/Multi) — industry leading accuracy
-- TTS: Aura-2, Flux TTS — natural, low latency voices
-- Voice Agent API — end-to-end conversational AI
-- Audio Intelligence: Summarization, Sentiment Analysis, Topic Detection, Speaker Diarization, Redaction, Keyterm Prompting
-
-Return this JSON structure:
+JSON structure:
 {
-  "partnerName": "string",
-  "partnerType": "string",
-  "industry": "string",
-  "region": "string",
-  "welcomeMessage": "string (2-3 warm, professional paragraphs welcoming this partner type to Deepgram)",
-  "partnershipOverview": "string (what success looks like for this partner type specifically)",
-  "productOverview": {
-    "stt": "string (2-3 sentences on STT tailored to this partner type and industry)",
-    "tts": "string (2-3 sentences on TTS)",
-    "voiceAgent": "string (2-3 sentences on Voice Agent API)",
-    "audioIntelligence": "string (2-3 sentences on Audio Intelligence features)"
+  'partnerName': 'string',
+  'partnerType': 'string',
+  'industry': 'string',
+  'region': 'string',
+  'welcomeMessage': 'string (2 paragraphs welcoming this partner type)',
+  'partnershipOverview': 'string (what success looks like for this partner type)',
+  'productOverview': {
+    'stt': 'string (2 sentences on STT for this partner)',
+    'tts': 'string (2 sentences on TTS)',
+    'voiceAgent': 'string (2 sentences on Voice Agent API)',
+    'audioIntelligence': 'string (2 sentences on Audio Intelligence)'
   },
-  "whenToUseWhat": {
-    "novaVsFlux": "string (clear guidance: use Nova-3 for batch/post-call/cost-sensitive; use Flux for real-time/streaming/voice agents/lowest latency)",
-    "saasVsSelfHosted": "string (SaaS is fastest to deploy and recommended for most; self-hosted for regulated industries, data residency requirements, or high volume with specific compliance needs)",
-    "streamingVsBatch": "string (streaming for real-time agent assist, voice agents, live transcription; batch for post-call analytics, compliance recording, large file processing)"
+  'whenToUseWhat': {
+    'novaVsFlux': 'string (use Nova-3 for batch/post-call; use Flux for real-time/streaming/voice agents)',
+    'saasVsSelfHosted': 'string (SaaS for most; self-hosted for regulated industries or data residency)',
+    'streamingVsBatch': 'string (streaming for real-time; batch for post-call analytics)'
   },
-  "useCases": [
-    {
-      "title": "string",
-      "description": "string (2-3 sentences)",
-      "recommendedProducts": ["array of Deepgram products"],
-      "customerPainPoint": "string"
-    }
+  'useCases': [
+    { 'title': 'string', 'description': 'string (2 sentences)', 'recommendedProducts': ['string'], 'customerPainPoint': 'string' }
   ],
-  "coSellMotion": {
-    "howToIdentifyOpportunities": "string (3-4 sentences specific to this partner type)",
-    "engagingDeeepgram": "string (how and when to bring Deepgram into a deal)",
-    "dealRegistration": "string (explain deal registration importance and process)"
+  'coSellMotion': {
+    'howToIdentifyOpportunities': 'string (3 sentences)',
+    'engagingDeeepgram': 'string (2 sentences)',
+    'dealRegistration': 'string (2 sentences)'
   },
-  "discoveryQuestions": ["array of 8-10 questions the partner should ask their customers to surface Deepgram opportunities — specific to their industry and partner type"],
-  "objectionHandling": [
-    {
-      "objection": "string",
-      "response": "string (2-3 sentences)"
-    }
+  'discoveryQuestions': ['string (8 questions)'],
+  'objectionHandling': [
+    { 'objection': 'string', 'response': 'string (2 sentences)' }
   ],
-  "competitivePositioning": {
-    "vsGoogle": "string (2-3 sentences on how to win vs Google STT)",
-    "vsAWS": "string (2-3 sentences on how to win vs AWS Transcribe)",
-    "vsAzure": "string (2-3 sentences on how to win vs Azure Speech)",
-    "vsAssemblyAI": "string (2-3 sentences on how to win vs AssemblyAI)",
-    "keyDifferentiators": ["array of 5 Deepgram differentiators"]
+  'competitivePositioning': {
+    'vsGoogle': 'string (2 sentences)',
+    'vsAWS': 'string (2 sentences)',
+    'vsAzure': 'string (2 sentences)',
+    'vsAssemblyAI': 'string (2 sentences)',
+    'keyDifferentiators': ['string (5 items)']
   },
-  "gtmMotion": "string (3-4 sentences on recommended GTM approach specific to this partner type — GSIs should focus on SI practice building, resellers on margin and deal reg, ISVs on native integration, etc.)",
-  "technicalBestPractices": {
-    "gettingStarted": "string (how to get an API key and run first test at developers.deepgram.com)",
-    "keyParameters": "string (important API parameters to know: model, language, smart_format, diarize, redact, keyterms)",
-    "saasSetup": "string (SaaS setup best practices)",
-    "selfHostedConsiderations": "string (when and how to consider self-hosted)"
+  'gtmMotion': 'string (3 sentences on GTM for this partner type)',
+  'technicalBestPractices': {
+    'gettingStarted': 'string (2 sentences)',
+    'keyParameters': 'string (2 sentences)',
+    'saasSetup': 'string (2 sentences)',
+    'selfHostedConsiderations': 'string (2 sentences)'
   },
-  "onboardingChecklist": [
-    "string (actionable checklist items in order)"
-  ],
-  "nextSteps": "string (2-3 sentences on immediate next steps for this partner)"
+  'onboardingChecklist': ['string (8 checklist items)'],
+  'nextSteps': 'string (2 sentences)'
 }
 
-Generate 5 use cases relevant to the partner industry. Generate 5 objection handling pairs covering the most common objections for this partner type. The onboarding checklist should have 8-10 items. Make everything specific to the partner type, industry, tech stack, and region provided.
-
-CRITICAL: Return ONLY the raw JSON object. Do not wrap it in markdown code blocks. Do not include \`\`\`json or \`\`\` anywhere. Start your response with { and end with }.`;
+Generate 5 use cases and 5 objection handling pairs. Keep all string values concise — 2-3 sentences maximum. Do not write essays. Return ONLY the JSON object.`;
 
 const INITIAL_FORM = {
   partnerName: '',
@@ -157,7 +139,7 @@ export default function PartnerEnablement() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           model: CLAUDE_MODEL,
-          max_tokens: 6000,
+          max_tokens: 8000,
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: userMessage }],
         }),
