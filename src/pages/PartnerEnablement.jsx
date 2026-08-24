@@ -107,7 +107,9 @@ Return this JSON structure:
   "nextSteps": "string (2-3 sentences on immediate next steps for this partner)"
 }
 
-Generate 5 use cases relevant to the partner industry. Generate 5 objection handling pairs covering the most common objections for this partner type. The onboarding checklist should have 8-10 items. Make everything specific to the partner type, industry, tech stack, and region provided.`;
+Generate 5 use cases relevant to the partner industry. Generate 5 objection handling pairs covering the most common objections for this partner type. The onboarding checklist should have 8-10 items. Make everything specific to the partner type, industry, tech stack, and region provided.
+
+CRITICAL: Return ONLY the raw JSON object. Do not wrap it in markdown code blocks. Do not include \`\`\`json or \`\`\` anywhere. Start your response with { and end with }.`;
 
 const INITIAL_FORM = {
   partnerName: '',
@@ -561,21 +563,23 @@ function DownloadIcon() {
 }
 
 function extractJson(text) {
-  if (!text) return null;
-  try {
-    // Remove markdown code blocks if present
-    const cleaned = text
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
+  if (!text) throw new Error('Empty response');
 
-    // Try to find the JSON object in the response
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-    throw new Error('No valid JSON found in response');
-  } catch {
-    return null;
+  // Remove markdown code blocks
+  let cleaned = text
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+
+  // Find the first { and last } to extract just the JSON object
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+
+  if (start === -1 || end === -1) {
+    throw new Error('No JSON object found in response');
   }
+
+  const jsonString = cleaned.substring(start, end + 1);
+  return JSON.parse(jsonString);
 }
