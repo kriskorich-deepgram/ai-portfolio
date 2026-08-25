@@ -6,7 +6,7 @@ export const tools = [
     tagline: 'Talk to an AI voice clone of Kris.',
     description:
       'Talk to an AI voice clone of Kris and ask about his enterprise experience, deals, and career',
-    tags: ['Voice AI', 'Voice Clone', 'ElevenLabs'],
+    tags: ['Voice AI', 'Voice Clone'],
     accent: 'from-accent-blue/40 to-accent-green/20',
     href: '/ask-kris',
     badge: 'FEATURED',
