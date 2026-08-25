@@ -1,5 +1,18 @@
 export const tools = [
   {
+    slug: 'ask-kris',
+    name: 'Ask Kris',
+    category: 'professional',
+    tagline: 'Talk to an AI voice clone of Kris.',
+    description:
+      'Talk to an AI voice clone of Kris and ask about his enterprise experience, deals, and career',
+    tags: ['Voice AI', 'Voice Clone', 'ElevenLabs'],
+    accent: 'from-accent-blue/40 to-accent-green/20',
+    href: '/ask-kris',
+    badge: 'FEATURED',
+    status: 'Live',
+  },
+  {
     slug: 'accountos',
     name: 'AccountOS',
     category: 'professional',
