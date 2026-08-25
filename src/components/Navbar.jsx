@@ -9,6 +9,14 @@ function navLinkClass({ isActive }) {
   ].join(' ');
 }
 
+function askKrisLinkClass({ isActive }) {
+  return [
+    'group flex items-center gap-2 text-sm transition-all',
+    'hover:text-emerald-300 hover:drop-shadow-[0_0_10px_rgba(52,211,153,0.55)]',
+    isActive ? 'text-emerald-400' : 'text-slate-400',
+  ].join(' ');
+}
+
 export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-ink-950/70 backdrop-blur-md">
@@ -38,6 +46,10 @@ export default function Navbar() {
           <NavLink to="/about" className={navLinkClass}>
             About
           </NavLink>
+          <NavLink to="/ask-kris" className={askKrisLinkClass}>
+            <LiveDot />
+            Ask Kris
+          </NavLink>
           <a
             href={LINKEDIN_URL}
             target="_blank"
@@ -50,6 +62,15 @@ export default function Navbar() {
         </nav>
       </div>
     </header>
+  );
+}
+
+function LiveDot() {
+  return (
+    <span aria-hidden="true" className="relative flex h-1.5 w-1.5">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
+    </span>
   );
 }
 
