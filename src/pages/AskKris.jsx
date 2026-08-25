@@ -174,7 +174,7 @@ function AskKrisExperience() {
           Ask Kris
         </p>
         <p className="mt-4 max-w-md text-balance text-lg text-slate-300 sm:text-xl">
-          Instead of reading my resume, talk to me.
+          Talk to me to learn more about my background.
         </p>
       </header>
 
