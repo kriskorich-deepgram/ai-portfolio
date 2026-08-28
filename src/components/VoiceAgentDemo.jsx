@@ -22,6 +22,13 @@ const SILENCE_HOLD_MS = 280;
 const VAD_POLL_MS = 40;
 const MAX_PLAUSIBLE_LATENCY_MS = 30000;
 
+// While the agent is speaking we discard mic frames rather than forwarding them
+// to STT, so the agent's own TTS output can never be transcribed as user speech
+// and trigger a false barge-in. The tail covers the room's echo decay after the
+// last sample actually plays; the failsafe guarantees the gate always reopens.
+const STT_GATE_TAIL_MS = 500;
+const STT_GATE_FAILSAFE_MS = 30000;
+
 const ACTIVE_PHASES = ['connecting', 'listening', 'thinking', 'responding'];
 
 export default function VoiceAgentDemo({ config, onClose }) {
@@ -32,7 +39,6 @@ export default function VoiceAgentDemo({ config, onClose }) {
   const [llmId, setLlmId] = useState(DEFAULT_LLM_ID);
   const [voiceId, setVoiceId] = useState(config.voice);
   const [summary, setSummary] = useState(null);
-  const [llmHighlighted, setLlmHighlighted] = useState(false);
 
   const sessionRef = useRef(null);
   const micRef = useRef(null);
@@ -43,6 +49,9 @@ export default function VoiceAgentDemo({ config, onClose }) {
   const vadTimerRef = useRef(null);
   const metricsRef = useRef(freshMetrics());
   const turnRef = useRef(freshTurn());
+  const agentSpeakingRef = useRef(false);
+  const gateTimerRef = useRef(null);
+  const gateFailsafeRef = useRef(null);
 
   const voiceOptions = useMemo(() => voicesForDemo(config), [config]);
   const activeLlm = llmById(llmId);
@@ -59,6 +68,7 @@ export default function VoiceAgentDemo({ config, onClose }) {
     return () => {
       cancelledRef.current = true;
       stopVad();
+      clearGateTimers();
       teardown();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,6 +84,53 @@ export default function VoiceAgentDemo({ config, onClose }) {
   function transitionPhase(next) {
     phaseRef.current = next;
     setPhase(next);
+  }
+
+  /* -------------------------------------------------------------- stt gate */
+
+  function clearGateTimers() {
+    if (gateTimerRef.current) {
+      window.clearTimeout(gateTimerRef.current);
+      gateTimerRef.current = null;
+    }
+    if (gateFailsafeRef.current) {
+      window.clearTimeout(gateFailsafeRef.current);
+      gateFailsafeRef.current = null;
+    }
+  }
+
+  /** Close the mic path to STT — called as soon as the agent has audio coming. */
+  function armSttGate() {
+    agentSpeakingRef.current = true;
+    clearGateTimers();
+    gateFailsafeRef.current = window.setTimeout(() => {
+      agentSpeakingRef.current = false;
+    }, STT_GATE_FAILSAFE_MS);
+  }
+
+  /**
+   * Reopen the mic path once playback has actually finished. AgentAudioDone only
+   * means the last chunk was *received*, so we wait for the player's buffer to
+   * drain, then hold for the echo tail.
+   */
+  function releaseSttGateWhenDrained() {
+    if (gateTimerRef.current) {
+      window.clearTimeout(gateTimerRef.current);
+      gateTimerRef.current = null;
+    }
+    const remainingMs =
+      (playerRef.current?.getRemainingPlaybackTime?.() ?? 0) * 1000;
+    if (remainingMs > 0) {
+      gateTimerRef.current = window.setTimeout(
+        releaseSttGateWhenDrained,
+        Math.min(remainingMs + 20, 250)
+      );
+      return;
+    }
+    gateTimerRef.current = window.setTimeout(() => {
+      agentSpeakingRef.current = false;
+      clearGateTimers();
+    }, STT_GATE_TAIL_MS);
   }
 
   /* ---------------------------------------------------------------- metrics */
@@ -169,6 +226,8 @@ export default function VoiceAgentDemo({ config, onClose }) {
     setError(null);
     setSummary(null);
     setHistory([]);
+    clearGateTimers();
+    agentSpeakingRef.current = false;
     freshMetricsState();
     metricsRef.current.startTs = performance.now();
     transitionPhase('connecting');
@@ -197,6 +256,9 @@ export default function VoiceAgentDemo({ config, onClose }) {
 
       session.on('audio', (chunk) => {
         if (cancelledRef.current) return;
+        // Backstop for audio that arrives without an AgentStartedSpeaking —
+        // only re-arms an open gate, so it never cancels a pending drain poll.
+        if (!agentSpeakingRef.current) armSttGate();
         markFirstAudio();
         player.queue(chunk);
       });
@@ -215,6 +277,9 @@ export default function VoiceAgentDemo({ config, onClose }) {
 
       session.on('settings-applied', () => {
         if (cancelledRef.current) return;
+        // Arm before the greeting is injected — the opening line is the longest
+        // stretch of uninterrupted agent audio and the usual self-interrupt.
+        armSttGate();
         try {
           session.injectAgentMessage(config.openingLine);
         } catch {
@@ -244,11 +309,13 @@ export default function VoiceAgentDemo({ config, onClose }) {
 
       session.on('agent-started-speaking', () => {
         if (cancelledRef.current) return;
+        armSttGate();
         transitionPhase('responding');
       });
 
       session.on('agent-audio-done', () => {
         if (cancelledRef.current) return;
+        releaseSttGateWhenDrained();
         transitionPhase('listening');
       });
 
@@ -263,14 +330,24 @@ export default function VoiceAgentDemo({ config, onClose }) {
       await session.connect();
       if (cancelledRef.current) return;
 
-      const mic = new AgentMicrophone((data) => {
-        if (cancelledRef.current) return;
-        try {
-          session.sendAudio(data);
-        } catch {
-          /* ignore */
+      const mic = new AgentMicrophone(
+        (data) => {
+          if (cancelledRef.current) return;
+          // Still capturing — just not forwarding — while the agent speaks.
+          if (agentSpeakingRef.current) return;
+          try {
+            session.sendAudio(data);
+          } catch {
+            /* ignore */
+          }
+        },
+        {
+          sampleRate: 16000,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
         }
-      });
+      );
       micRef.current = mic;
       await mic.start();
       if (cancelledRef.current) return;
@@ -286,6 +363,8 @@ export default function VoiceAgentDemo({ config, onClose }) {
   }
 
   function teardown() {
+    clearGateTimers();
+    agentSpeakingRef.current = false;
     try {
       micRef.current?.stop();
     } catch {
@@ -330,14 +409,6 @@ export default function VoiceAgentDemo({ config, onClose }) {
 
   function handleStartNewSession() {
     start();
-  }
-
-  function handleCompareLlms() {
-    const index = LLM_OPTIONS.findIndex((l) => l.id === llmId);
-    const next = LLM_OPTIONS[(index + 1) % LLM_OPTIONS.length];
-    setLlmId(next.id);
-    setLlmHighlighted(true);
-    window.setTimeout(() => setLlmHighlighted(false), 4000);
   }
 
   function handleSuggestion(text) {
@@ -393,10 +464,8 @@ export default function VoiceAgentDemo({ config, onClose }) {
       </header>
 
       <SessionControls
-        accentHex={config.accentHex}
         llmId={llmId}
         onSelectLlm={setLlmId}
-        highlighted={llmHighlighted}
         voiceId={voiceId}
         voiceOptions={voiceOptions}
         onSelectVoice={setVoiceId}
@@ -472,7 +541,6 @@ export default function VoiceAgentDemo({ config, onClose }) {
                   summary={summary}
                   accentHex={config.accentHex}
                   onStartNew={handleStartNewSession}
-                  onCompare={handleCompareLlms}
                 />
               )}
             </div>
@@ -534,10 +602,8 @@ function stripMarkdown(text) {
 /* --------------------------------------------------------------- components */
 
 function SessionControls({
-  accentHex,
   llmId,
   onSelectLlm,
-  highlighted,
   voiceId,
   voiceOptions,
   onSelectVoice,
@@ -545,16 +611,7 @@ function SessionControls({
 }) {
   return (
     <div className="flex flex-col gap-3 border-b border-white/10 bg-ink-900/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-      <div
-        className={`flex flex-col gap-1.5 rounded-xl px-2 py-1.5 transition ${
-          highlighted ? 'animate-pulse' : ''
-        }`}
-        style={
-          highlighted
-            ? { boxShadow: `0 0 0 2px ${accentHex}`, backgroundColor: `${accentHex}14` }
-            : undefined
-        }
-      >
+      <div className="flex flex-col gap-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
           Model
         </span>
@@ -658,7 +715,7 @@ function Orb({ phase, accentHex, onClick, disabled }) {
   );
 }
 
-function MetricsPanel({ summary, accentHex, onStartNew, onCompare }) {
+function MetricsPanel({ summary, accentHex, onStartNew }) {
   return (
     <section className="mt-4 animate-fade-in-up rounded-2xl border border-white/10 bg-ink-900/70 p-5 sm:p-6">
       <h3
@@ -729,7 +786,7 @@ function MetricsPanel({ summary, accentHex, onStartNew, onCompare }) {
         confidence is not emitted by the Voice Agent API, so it reads n/a.
       </p>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4">
         <button
           type="button"
           onClick={onStartNew}
@@ -737,13 +794,6 @@ function MetricsPanel({ summary, accentHex, onStartNew, onCompare }) {
           style={{ backgroundColor: accentHex }}
         >
           Start New Session
-        </button>
-        <button
-          type="button"
-          onClick={onCompare}
-          className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10"
-        >
-          Compare LLMs
         </button>
       </div>
     </section>
