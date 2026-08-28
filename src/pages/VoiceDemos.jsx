@@ -11,7 +11,7 @@ export default function VoiceDemos() {
       <PageHeader
         eyebrow="Live demos"
         title="Voice AI Demos"
-        description="Experience Deepgram-powered voice agents across industries. Each demo runs a full conversation in your browser — Deepgram streaming STT, Claude reasoning, Deepgram TTS playback."
+        description="Experience Deepgram-powered voice agents across six industries. Each demo runs a full conversation in your browser — Deepgram streaming STT, your choice of frontier LLM, Deepgram Flux TTS playback, and a latency scorecard when you hang up."
       />
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -31,6 +31,7 @@ export default function VoiceDemos() {
 
       {activeDemo && (
         <VoiceAgentDemo
+          key={activeDemo.id}
           config={activeDemo}
           onClose={() => setActiveDemo(null)}
         />
@@ -53,9 +54,10 @@ function DemoCard({ demo, onStart }) {
           </div>
           <div className="min-w-0">
             <p
-              className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+              className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
               style={{ color: demo.accentHex }}
             >
+              <IndustryIcon name={demo.icon} />
               {demo.industryEyebrow}
             </p>
             <h3 className="mt-1 text-lg font-semibold tracking-tight text-white">
@@ -96,6 +98,54 @@ function DemoCard({ demo, onStart }) {
         </button>
       </div>
     </article>
+  );
+}
+
+const ICON_PATHS = {
+  healthcare: <path d="M3 12h4l2-5 3 10 2.5-5H21" />,
+  airlines: <path d="M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 0 0-3-3L13 8 4.8 6.2a.6.6 0 0 0-.6.9l3 5-2.4 2.4H3a.5.5 0 0 0-.3.9l3 2 2 3a.5.5 0 0 0 .9-.3v-1.8L11 16l5 3a.6.6 0 0 0 .9-.6z" />,
+  banking: (
+    <>
+      <path d="M3 10h18L12 4 3 10z" />
+      <path d="M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18" />
+    </>
+  ),
+  retail: (
+    <>
+      <path d="M6 2 3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7l-3-5z" />
+      <path d="M3 7h18M16 11a4 4 0 0 1-8 0" />
+    </>
+  ),
+  government: (
+    <>
+      <path d="M2 20h20M4 20V10M8 20V10M12 20V10M16 20V10M20 20V10M12 3 2 9h20z" />
+    </>
+  ),
+  hospitality: (
+    <>
+      <path d="M4 21V9a8 8 0 0 1 16 0v12" />
+      <path d="M2 21h20M12 5V3" />
+    </>
+  ),
+};
+
+function IndustryIcon({ name }) {
+  const paths = ICON_PATHS[name];
+  if (!paths) return null;
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-3.5 w-3.5 flex-none"
+      aria-hidden="true"
+    >
+      {paths}
+    </svg>
   );
 }
 

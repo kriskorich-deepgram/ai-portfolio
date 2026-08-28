@@ -38,6 +38,15 @@ export default {
       boxShadow: {
         glow: '0 0 40px -10px rgba(91,140,255,0.45)',
       },
+      keyframes: {
+        'fade-in-up': {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'fade-in-up': 'fade-in-up 450ms ease-out both',
+      },
     },
   },
   plugins: [],
