@@ -1,6 +1,15 @@
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 
 const LINKEDIN_URL = 'https://www.linkedin.com/in/kris-korich/';
+
+const NAV_LINKS = [
+  { to: '/', label: 'Home', end: true },
+  { to: '/tools', label: 'Tools' },
+  { to: '/insights', label: 'Insights' },
+  { to: '/deal-stories', label: 'Deal Stories' },
+  { to: '/about', label: 'About' },
+];
 
 function navLinkClass({ isActive }) {
   return [
@@ -17,11 +26,56 @@ function askKrisLinkClass({ isActive }) {
   ].join(' ');
 }
 
+function mobileNavLinkClass({ isActive }) {
+  return [
+    'block py-3 text-base transition-colors',
+    isActive ? 'text-white' : 'text-slate-400 hover:text-white',
+  ].join(' ');
+}
+
+function mobileAskKrisLinkClass({ isActive }) {
+  return [
+    'flex items-center gap-2 py-3 text-base transition-colors',
+    isActive ? 'text-emerald-400' : 'text-slate-400 hover:text-emerald-300',
+  ].join(' ');
+}
+
 export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const headerRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    function handlePointerDown(event) {
+      if (headerRef.current && !headerRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') setMenuOpen(false);
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuOpen]);
+
+  const closeMenu = () => setMenuOpen(false);
+
   return (
-    <header className="sticky top-0 z-40 border-b border-white/5 bg-ink-950/70 backdrop-blur-md">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-40 border-b border-white/5 bg-ink-950/70 backdrop-blur-md"
+    >
       <div className="container-page flex h-16 items-center justify-between">
-        <Link to="/" className="group flex items-center gap-2">
+        <Link to="/" className="group flex items-center gap-2" onClick={closeMenu}>
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-accent-blue to-accent-violet text-xs font-bold text-white shadow-glow">
             KK
           </span>
@@ -30,22 +84,12 @@ export default function Navbar() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-7">
-          <NavLink to="/" end className={navLinkClass}>
-            Home
-          </NavLink>
-          <NavLink to="/tools" className={navLinkClass}>
-            Tools
-          </NavLink>
-          <NavLink to="/insights" className={navLinkClass}>
-            Insights
-          </NavLink>
-          <NavLink to="/deal-stories" className={navLinkClass}>
-            Deal Stories
-          </NavLink>
-          <NavLink to="/about" className={navLinkClass}>
-            About
-          </NavLink>
+        <nav className="hidden items-center gap-7 md:flex">
+          {NAV_LINKS.map((link) => (
+            <NavLink key={link.to} to={link.to} end={link.end} className={navLinkClass}>
+              {link.label}
+            </NavLink>
+          ))}
           <NavLink to="/ask-kris" className={askKrisLinkClass}>
             <LiveDot />
             Ask Kris
@@ -60,8 +104,89 @@ export default function Navbar() {
             <LinkedInIcon />
           </a>
         </nav>
+
+        <button
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+          aria-controls="mobile-nav"
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-white/5 text-slate-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white md:hidden"
+        >
+          {menuOpen ? <CloseIcon /> : <MenuIcon />}
+        </button>
       </div>
+
+      {menuOpen && (
+        <nav
+          id="mobile-nav"
+          className="w-full border-t border-white/5 bg-ink-950/95 backdrop-blur-md md:hidden"
+        >
+          <div className="container-page flex flex-col py-2">
+            {NAV_LINKS.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.end}
+                className={mobileNavLinkClass}
+                onClick={closeMenu}
+              >
+                {link.label}
+              </NavLink>
+            ))}
+            <NavLink to="/ask-kris" className={mobileAskKrisLinkClass} onClick={closeMenu}>
+              <LiveDot />
+              Ask Kris
+            </NavLink>
+            <a
+              href={LINKEDIN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="LinkedIn"
+              onClick={closeMenu}
+              className="flex items-center gap-2 py-3 text-base text-slate-400 transition-colors hover:text-white"
+            >
+              <LinkedInIcon />
+              LinkedIn
+            </a>
+          </div>
+        </nav>
+      )}
     </header>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      className="h-5 w-5"
+      aria-hidden="true"
+    >
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      className="h-5 w-5"
+      aria-hidden="true"
+    >
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
   );
 }
 
