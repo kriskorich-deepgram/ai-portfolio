@@ -22,10 +22,13 @@ const SILENCE_HOLD_MS = 280;
 const VAD_POLL_MS = 40;
 const MAX_PLAUSIBLE_LATENCY_MS = 30000;
 
-// While the agent is speaking we discard mic frames rather than forwarding them
-// to STT, so the agent's own TTS output can never be transcribed as user speech
-// and trigger a false barge-in. The tail covers the room's echo decay after the
-// last sample actually plays; the failsafe guarantees the gate always reopens.
+// The opening line is injected before the caller has said anything, so any of it
+// that leaks back through the mic gets transcribed as user speech and interrupts
+// the greeting mid-sentence. For that one message we discard mic frames instead
+// of forwarding them to STT. The gate is armed exactly once per session and is
+// never re-armed, so barge-in stays live for every subsequent agent turn. The
+// tail covers the room's echo decay after the last sample actually plays; the
+// failsafe guarantees the gate reopens even if AgentAudioDone never arrives.
 const STT_GATE_TAIL_MS = 500;
 const STT_GATE_FAILSAFE_MS = 30000;
 
@@ -39,6 +42,8 @@ export default function VoiceAgentDemo({ config, onClose }) {
   const [llmId, setLlmId] = useState(DEFAULT_LLM_ID);
   const [voiceId, setVoiceId] = useState(config.voice);
   const [summary, setSummary] = useState(null);
+  // Mirrors the STT gate for rendering — true only while the greeting plays.
+  const [greetingActive, setGreetingActive] = useState(false);
 
   const sessionRef = useRef(null);
   const micRef = useRef(null);
@@ -99,19 +104,21 @@ export default function VoiceAgentDemo({ config, onClose }) {
     }
   }
 
-  /** Close the mic path to STT — called as soon as the agent has audio coming. */
+  /** Close the mic path to STT for the greeting only. Armed once per session. */
   function armSttGate() {
     agentSpeakingRef.current = true;
     clearGateTimers();
     gateFailsafeRef.current = window.setTimeout(() => {
       agentSpeakingRef.current = false;
+      setGreetingActive(false);
     }, STT_GATE_FAILSAFE_MS);
   }
 
   /**
-   * Reopen the mic path once playback has actually finished. AgentAudioDone only
-   * means the last chunk was *received*, so we wait for the player's buffer to
-   * drain, then hold for the echo tail.
+   * Reopen the mic path once the greeting has actually finished playing.
+   * AgentAudioDone only means the last chunk was *received*, so we wait for the
+   * player's buffer to drain, then hold for the echo tail. Once this runs the
+   * gate stays open for the rest of the session.
    */
   function releaseSttGateWhenDrained() {
     if (gateTimerRef.current) {
@@ -130,6 +137,7 @@ export default function VoiceAgentDemo({ config, onClose }) {
     gateTimerRef.current = window.setTimeout(() => {
       agentSpeakingRef.current = false;
       clearGateTimers();
+      setGreetingActive(false);
     }, STT_GATE_TAIL_MS);
   }
 
@@ -228,6 +236,7 @@ export default function VoiceAgentDemo({ config, onClose }) {
     setHistory([]);
     clearGateTimers();
     agentSpeakingRef.current = false;
+    setGreetingActive(false);
     freshMetricsState();
     metricsRef.current.startTs = performance.now();
     transitionPhase('connecting');
@@ -256,9 +265,6 @@ export default function VoiceAgentDemo({ config, onClose }) {
 
       session.on('audio', (chunk) => {
         if (cancelledRef.current) return;
-        // Backstop for audio that arrives without an AgentStartedSpeaking —
-        // only re-arms an open gate, so it never cancels a pending drain poll.
-        if (!agentSpeakingRef.current) armSttGate();
         markFirstAudio();
         player.queue(chunk);
       });
@@ -277,9 +283,10 @@ export default function VoiceAgentDemo({ config, onClose }) {
 
       session.on('settings-applied', () => {
         if (cancelledRef.current) return;
-        // Arm before the greeting is injected — the opening line is the longest
-        // stretch of uninterrupted agent audio and the usual self-interrupt.
+        // The only place the gate is armed — it covers the greeting and nothing
+        // else, so barge-in works from the caller's first turn onward.
         armSttGate();
+        setGreetingActive(true);
         try {
           session.injectAgentMessage(config.openingLine);
         } catch {
@@ -309,13 +316,13 @@ export default function VoiceAgentDemo({ config, onClose }) {
 
       session.on('agent-started-speaking', () => {
         if (cancelledRef.current) return;
-        armSttGate();
         transitionPhase('responding');
       });
 
       session.on('agent-audio-done', () => {
         if (cancelledRef.current) return;
-        releaseSttGateWhenDrained();
+        // No-op after the greeting — the gate is open for the rest of the call.
+        if (agentSpeakingRef.current) releaseSttGateWhenDrained();
         transitionPhase('listening');
       });
 
@@ -333,7 +340,7 @@ export default function VoiceAgentDemo({ config, onClose }) {
       const mic = new AgentMicrophone(
         (data) => {
           if (cancelledRef.current) return;
-          // Still capturing — just not forwarding — while the agent speaks.
+          // Still capturing — just not forwarding — during the greeting only.
           if (agentSpeakingRef.current) return;
           try {
             session.sendAudio(data);
@@ -365,6 +372,7 @@ export default function VoiceAgentDemo({ config, onClose }) {
   function teardown() {
     clearGateTimers();
     agentSpeakingRef.current = false;
+    setGreetingActive(false);
     try {
       micRef.current?.stop();
     } catch {
@@ -499,7 +507,9 @@ export default function VoiceAgentDemo({ config, onClose }) {
               {phase === 'listening' &&
                 'Mic is open — speak naturally. Interrupt the agent anytime.'}
               {phase === 'responding' &&
-                'Agent is speaking. Start talking to interrupt.'}
+                (greetingActive
+                  ? 'Agent is delivering the greeting — barge-in opens when it finishes.'
+                  : 'Agent is speaking. Start talking to interrupt.')}
               {phase === 'thinking' && 'Generating reply…'}
               {phase === 'ended' && 'Session ended. Your summary is below.'}
               {phase === 'error' &&

@@ -37,7 +37,7 @@ export const VOICE_DEMOS = [
         'What time is the post-op appointment?',
       ],
       proTip:
-        'Aria can only help with scheduling. Try asking about medication dosages to see her guardrails in action.',
+        'Aria can only help with scheduling — ask about medication dosages to see her guardrails in action. Her greeting plays through uninterrupted, but from your first turn onward you can talk over her and she will stop to listen.',
     },
   },
   {
@@ -84,7 +84,7 @@ export const VOICE_DEMOS = [
         'What time will it be delivered?',
       ],
       proTip:
-        "Sofia starts in Spanish but switches to English instantly. Try interrupting her while she is speaking to test Deepgram's barge-in detection.",
+        "Sofia starts in Spanish but switches to English instantly. Let her opening greeting finish, then talk over her mid-sentence on any later turn to test Deepgram's barge-in detection.",
     },
   },
   {
