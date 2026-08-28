@@ -6,12 +6,12 @@ const AGENT_ID = 'agent_1701m0x3paswe2987whjvryjg6x5';
 const LINKEDIN_URL = 'https://www.linkedin.com/in/kris-korich/';
 
 const SUGGESTED_QUESTIONS = [
-  "What's your NRR?",
-  'Tell me about your largest deal',
-  'How big is your book of business?',
+  'Walk me through your background',
+  "What's your sales experience?",
+  'Tell me about your largest deals',
   'What did you accomplish at Talkdesk?',
-  'Tell me about your enterprise AI experience',
-  'Walk me through your career',
+  'How do you sell through partners?',
+  "What's your NRR?",
 ];
 
 const STATUS_LABEL = {
